@@ -1,0 +1,40 @@
+name: Update OGC kernel on OBS
+
+on:
+  schedule:
+    - cron: "17 5 * * *"      # every day at 05:17 UTC
+  workflow_dispatch: {}       # "Run workflow" button for manual runs
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OBS_PROJECT: home:Luthenis:ogc-handheld
+      OBS_API: https://api.opensuse.org
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install osc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osc
+
+      - name: Configure osc credentials
+        env:
+          OBS_USER: ${{ secrets.OBS_USER }}
+          OBS_PASSWORD: ${{ secrets.OBS_PASSWORD }}
+        run: |
+          mkdir -p ~/.config/osc
+          cat > ~/.config/osc/oscrc <<OSCRC
+          [general]
+          apiurl = ${OBS_API}
+          [${OBS_API}]
+          user = ${OBS_USER}
+          pass = ${OBS_PASSWORD}
+          credentials_mgr_class = osc.credentials.PlaintextConfigFileCredentialsManager
+          OSCRC
+          chmod 600 ~/.config/osc/oscrc
+
+      - name: Update kernel-ogc if a new OGC release exists
+        run: bash scripts/update-kernel-ogc.sh
