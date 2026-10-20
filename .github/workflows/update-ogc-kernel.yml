@@ -1,4 +1,4 @@
-name: Update OGC kernel and jupiter-hw-support on OBS
+name: Update OGC kernel, jupiter-hw-support and Steam bootstrap on OBS
 
 on:
   schedule:
@@ -42,3 +42,7 @@ jobs:
       - name: Update jupiter-hw-support if a new SteamOS 3.8 tag exists
         if: always()
         run: bash scripts/update-jupiter-hw-support.sh
+
+      - name: Update steam-jupiter-bootstrap if Valve published a new one
+        if: always()
+        run: bash scripts/update-steam-bootstrap.sh
