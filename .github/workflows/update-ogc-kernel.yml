@@ -1,4 +1,4 @@
-name: Update OGC kernel on OBS
+name: Update OGC kernel and jupiter-hw-support on OBS
 
 on:
   schedule:
@@ -38,3 +38,7 @@ jobs:
 
       - name: Update kernel-ogc if a new OGC release exists
         run: bash scripts/update-kernel-ogc.sh
+
+      - name: Update jupiter-hw-support if a new SteamOS 3.8 tag exists
+        if: always()
+        run: bash scripts/update-jupiter-hw-support.sh
