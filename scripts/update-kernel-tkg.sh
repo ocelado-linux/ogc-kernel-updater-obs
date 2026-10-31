@@ -122,6 +122,9 @@ _debugdisable="false"
 _STRIP="true"
 _random_trust_cpu="true"
 _noccache="true"
+# no "script" pseudo-terminal wrapper: with piped stdin (no TTY) it gets the
+# whole run killed (exit 143)
+_logging_use_script="no"
 CFG
     # heartbeat: the kernel git fetch is silent for several minutes
     ( while sleep 60; do echo "   ... still working ($lvl, $(date +%H:%M))"; done ) &
