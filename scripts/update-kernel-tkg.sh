@@ -138,11 +138,17 @@ CFG
     grep -E '^CONFIG_(SCHED_BORE|HZ_1000|X86_64_VERSION|MZEN|GENERIC_CPU)' "config-$lvl" || true
 done
 
-# both trees must be identical apart from .config
-if ! diff -rq --exclude=.git --exclude=.config --exclude='*.orig' \
-        tkg-v3/linux-src-git tkg-v2/linux-src-git >/dev/null; then
-    echo "::warning::v2 and v3 trees differ beyond .config; using the v3 tree"
+# Both trees must be identical apart from .config and the -march level that
+# linux-tkg writes in the top Makefile (the spec switches it per flavor).
+sed -E 's/(-march=|-Ctarget-cpu=)x86-64-v[0-9]+/\1x86-64-LEVEL/g' tkg-v3/linux-src-git/Makefile > mk-v3
+sed -E 's/(-march=|-Ctarget-cpu=)x86-64-v[0-9]+/\1x86-64-LEVEL/g' tkg-v2/linux-src-git/Makefile > mk-v2
+diff -u mk-v3 mk-v2 || { echo "Makefiles differ beyond the x86-64 level" >&2; exit 1; }
+other="$(diff -rq --exclude=.git --exclude=.config --exclude='*.orig' \
+        tkg-v3/linux-src-git tkg-v2/linux-src-git | grep -v 'linux-src-git/Makefile and' || true)"
+if [ -n "$other" ]; then
+    echo "v2 and v3 trees differ beyond .config/Makefile:" >&2; echo "$other" >&2; exit 1
 fi
+grep -nE -- '(-march=|-Ctarget-cpu=)x86-64-' tkg-v3/linux-src-git/Makefile
 
 # --- 6. source tarball ------------------------------------------------------
 log "Packing linux-tkg-$VER.tar.xz"
