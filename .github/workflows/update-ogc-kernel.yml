@@ -1,4 +1,4 @@
-name: Update OGC kernel, jupiter-hw-support and Steam bootstrap on OBS
+name: Update Ocelado packages on OBS (kernels, jupiter-hw-support, Steam bootstrap)
 
 on:
   schedule:
@@ -46,3 +46,37 @@ jobs:
       - name: Update steam-jupiter-bootstrap if Valve published a new one
         if: always()
         run: bash scripts/update-steam-bootstrap.sh
+
+  # linux-tkg desktop kernels (separate job: long, needs docker + kernel.org)
+  tkg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      OBS_PROJECT: home:Luthenis:ogc-handheld
+      OBS_API: https://api.opensuse.org
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install osc and tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osc git xz-utils python3 bc bison flex libelf-dev libssl-dev
+
+      - name: Configure osc credentials
+        env:
+          OBS_USER: ${{ secrets.OBS_USER }}
+          OBS_PASSWORD: ${{ secrets.OBS_PASSWORD }}
+        run: |
+          mkdir -p ~/.config/osc
+          cat > ~/.config/osc/oscrc <<OSCRC
+          [general]
+          apiurl = ${OBS_API}
+          [${OBS_API}]
+          user = ${OBS_USER}
+          pass = ${OBS_PASSWORD}
+          credentials_mgr_class = osc.credentials.PlaintextConfigFileCredentialsManager
+          OSCRC
+          chmod 600 ~/.config/osc/oscrc
+
+      - name: Update kernel-tkg if linux or linux-tkg moved
+        run: bash scripts/update-kernel-tkg.sh
