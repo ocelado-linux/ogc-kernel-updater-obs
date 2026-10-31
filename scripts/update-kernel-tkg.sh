@@ -129,7 +129,8 @@ CFG
     # heartbeat: the kernel git fetch is silent for several minutes
     ( while sleep 60; do echo "   ... still working ($lvl, $(date +%H:%M))"; done ) &
     hb=$!
-    ( cd "tkg-$lvl" && yes "" | timeout 40m ./install.sh config ) \
+    # no pipefail here: "yes" always ends with SIGPIPE when install.sh exits
+    ( set +o pipefail; cd "tkg-$lvl" && yes "" | timeout 40m ./install.sh config ) \
         || { kill "$hb" 2>/dev/null; echo "linux-tkg config failed for $lvl" >&2; tail -50 "tkg-$lvl"/logs/*.txt 2>/dev/null || true; exit 1; }
     kill "$hb" 2>/dev/null || true
     test -s "tkg-$lvl/linux-src-git/.config"
