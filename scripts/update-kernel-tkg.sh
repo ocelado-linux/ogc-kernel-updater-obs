@@ -76,6 +76,8 @@ for lvl in v3 v2; do
     cat > ~/.config/frogminer/linux-tkg.cfg <<CFG
 _distro="Generic"
 _version="v$VER"
+_git_mirror="gregkh"
+_kernel_source_folder="$WORK/kernel-git"
 _configfile="tumbleweed.config"
 _cpusched="bore"
 _compiler="gcc"
@@ -111,8 +113,12 @@ _STRIP="true"
 _random_trust_cpu="true"
 _noccache="true"
 CFG
+    # heartbeat: the kernel git fetch is silent for several minutes
+    ( while sleep 60; do echo "   ... still working ($lvl, $(date +%H:%M))"; done ) &
+    hb=$!
     ( cd "tkg-$lvl" && yes "" | timeout 40m ./install.sh config ) \
-        || { echo "linux-tkg config failed for $lvl" >&2; tail -50 "tkg-$lvl"/logs/*.txt 2>/dev/null || true; exit 1; }
+        || { kill "$hb" 2>/dev/null; echo "linux-tkg config failed for $lvl" >&2; tail -50 "tkg-$lvl"/logs/*.txt 2>/dev/null || true; exit 1; }
+    kill "$hb" 2>/dev/null || true
     test -s "tkg-$lvl/linux-src-git/.config"
     cp "tkg-$lvl/linux-src-git/.config" "config-$lvl"
     grep -E '^CONFIG_(SCHED_BORE|HZ_1000|X86_64_VERSION|MZEN|GENERIC_CPU)' "config-$lvl" || true
