@@ -67,7 +67,17 @@ docker run --rm registry.opensuse.org/opensuse/tumbleweed:latest bash -c '
     cat "$(ls -1 /usr/lib/modules/*-default/config | sort -V | tail -n1)"' > tumbleweed.config
 grep -q '^CONFIG_BTRFS_FS=' tumbleweed.config || { echo "Bad Tumbleweed config" >&2; exit 1; }
 
-# --- 4. run linux-tkg "config" once per CPU level ----------------------------
+# --- 4. kernel sources: fetched here (visible progress), tkg runs offline ----
+KGIT="$WORK/kernel-git/linux-tkg/linux-kernel.git"
+log "Fetching linux v$VER (shallow) from GitHub mirror"
+git init -q --bare "$KGIT"
+git -C "$KGIT" fetch --depth 1 --progress https://github.com/gregkh/linux.git \
+    "refs/tags/v$VER:refs/tags/v$VER" 2>&1 | tr '\r' '\n' | grep -E 'Receiving|Resolving|done|error|fatal' | tail -5 || true
+git -C "$KGIT" rev-parse -q --verify "refs/tags/v$VER" >/dev/null \
+    || { echo "Kernel tag v$VER was not fetched" >&2; exit 1; }
+du -sh "$KGIT"
+
+# --- 5. run linux-tkg "config" once per CPU level ----------------------------
 for lvl in v3 v2; do
     log "linux-tkg config for x86-64-$lvl"
     rm -rf "tkg-$lvl"; cp -a tkg-src "tkg-$lvl"
@@ -76,7 +86,7 @@ for lvl in v3 v2; do
     cat > ~/.config/frogminer/linux-tkg.cfg <<CFG
 _distro="Generic"
 _version="v$VER"
-_git_mirror="gregkh"
+_offline="true"
 _kernel_source_folder="$WORK/kernel-git"
 _configfile="tumbleweed.config"
 _cpusched="bore"
@@ -130,7 +140,7 @@ if ! diff -rq --exclude=.git --exclude=.config --exclude='*.orig' \
     echo "::warning::v2 and v3 trees differ beyond .config; using the v3 tree"
 fi
 
-# --- 5. source tarball ------------------------------------------------------
+# --- 6. source tarball ------------------------------------------------------
 log "Packing linux-tkg-$VER.tar.xz"
 rm -f tkg-v3/linux-src-git/.config
 tar --exclude=.git --owner=0 --group=0 --sort=name \
@@ -138,7 +148,7 @@ tar --exclude=.git --owner=0 --group=0 --sort=name \
     -C tkg-v3 -cf - linux-src-git | xz -T0 -6 > "linux-tkg-$VER.tar.xz"
 ls -lh "linux-tkg-$VER.tar.xz"
 
-# --- 6. commit to OBS -------------------------------------------------------
+# --- 7. commit to OBS -------------------------------------------------------
 rm -f obs/linux-tkg-*.tar.xz
 cp "linux-tkg-$VER.tar.xz" config-v2 config-v3 obs/
 sed -i -E "s/^(Version:[[:space:]]*).*/\1$VER/" "$spec"
