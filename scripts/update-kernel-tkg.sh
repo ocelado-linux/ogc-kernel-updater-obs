@@ -152,7 +152,10 @@ grep -nE -- '(-march=|-Ctarget-cpu=)x86-64-' tkg-v3/linux-src-git/Makefile
 
 # --- 6. source tarball ------------------------------------------------------
 log "Packing linux-tkg-$VER.tar.xz"
-rm -f tkg-v3/linux-src-git/.config
+# ship a clean tree: "install.sh config" leaves generated files behind
+# (include/config/kernel.release etc.) that override the spec's LOCALVERSION
+make -C tkg-v3/linux-src-git -s mrproper
+rm -f tkg-v3/linux-src-git/.config tkg-v3/linux-src-git/localversion*
 tar --exclude=.git --owner=0 --group=0 --sort=name \
     --transform "s,^linux-src-git,linux-tkg-$VER," \
     -C tkg-v3 -cf - linux-src-git | xz -T0 -6 > "linux-tkg-$VER.tar.xz"
